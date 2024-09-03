@@ -1,12 +1,22 @@
+#Basic packages
 pytest
 pylint
 ipdb
 jupyterlab
+
+#Data Science packages
 numpy
 pandas
 matplotlib
 seaborn
 scikit-learn
+
+#Operating System Packages
+os
 glob
 requests
 bs4
+
+#API-related packages
+fastapi
+uvicorn
