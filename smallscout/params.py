@@ -16,7 +16,7 @@ PREFECT_FLOW_NAME = os.environ.get("PREFECT_FLOW_NAME")
 PREFECT_LOG_LEVEL = os.environ.get("PREFECT_LOG_LEVEL")
 GAR_IMAGE = os.environ.get("GAR_IMAGE")
 GAR_MEMORY = os.environ.get("GAR_MEMORY")
-DOCKER_REPO_NAME = os.environ.get("DOCKER_REPO_NAME")
+GAR_REPO = os.environ.get("GAR_REPO")
 DOCKER_IMAGE_NAME = os.environ.get("DOCKER_IMAGE_NAME")
 SERVICE_URL = os.environ.get("SERVICE_URL")
 
