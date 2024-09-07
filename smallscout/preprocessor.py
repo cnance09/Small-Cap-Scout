@@ -5,14 +5,31 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import RobustScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 
-# Step 1: Custom train/test split by grouping data by 'Ticker'
-def group_train_test_split(X, test_size=0.2, random_state=None):
-    """Splits the data into train/test sets, grouping by 'Ticker'."""
-    unique_groups = X['Ticker'].unique()
+# Step 1 : target creation + train_test_split
+# Creating target variables to automate creation of quarterly, yearly and 2-yearly targets, because well, DON'T REPEAT YOURSELF!
+def create_target_variable(df, frequency:int, threshold):
+    if frequency == 1:
+        col = 'mc_qtr_growth_pct'
+    if frequency == 4:
+        col = 'mc_yr_growth_pct'
+    if frequency == 8:
+        col = '2yr_growth_pct'
+    df[col] = df[col].shift(-frequency)
+    df.dropna(subset=col, inplace=True)
+    target_func = lambda x: 1 if ((x[col] > threshold) & (x.small_cap == 1)) else 0
+    df['target'] = df.apply(target_func, axis=1)
+    return df
+
+# Creating a custom function for the group split
+def group_train_test_split(data, test_size=0.2, random_state=None):
+    # We split by groups (company ticker) while keeping the data structure intact.
+    unique_groups = data['Ticker'].unique()
     train_groups, test_groups = train_test_split(unique_groups, test_size=test_size, random_state=random_state)
-    train_data = X[X['Ticker'].isin(train_groups)]
-    test_data = X[X['Ticker'].isin(test_groups)]
-    return train_data, test_data
+    X_train = data[data['Ticker'].isin(train_groups)].drop(['mc_qtr_growth', 'mc_qtr_growth_pct', 'mc_yr_growth', 'mc_yr_growth_pct', 'mc_2yr_growth', 'mc_2yr_growth_pct'], axis = 1)
+    X_test = data[data['Ticker'].isin(test_groups)].drop(['mc_qtr_growth', 'mc_qtr_growth_pct', 'mc_yr_growth', 'mc_yr_growth_pct', 'mc_2yr_growth', 'mc_2yr_growth_pct'], axis = 1)
+    y_train = data[data['Ticker'].isin(train_groups)]['target']
+    y_test = data[data['Ticker'].isin(test_groups)]['target']
+    return X_train, X_test, y_train, y_test
 
 # Step 2: Identify numerical and categorical features
 def identify_feature_types(df):
@@ -29,17 +46,19 @@ def identify_feature_types(df):
 # Step 3: Create preprocessing pipeline for numerical and categorical features
 def create_preprocessing_pipeline(numerical_features, categorical_features):
     """Creates the preprocessing pipeline for numerical and categorical features."""
+    # Preprocessing for numerical data: RobustScaler to make our numbers más robusto.
     numerical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median')),  # Handle NaNs
         ('scaler', RobustScaler())  # Scale the data
     ])
 
+    # Preprocessing for categorical data: OneHotEncoder to give each category its own columm...
     categorical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='most_frequent')),  # Handle missing categories
         ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))  # Encode categories
     ])
 
-    # Combine the transformers
+    # Combine the transformers into one big ColumnTransformer.
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', numerical_transformer, numerical_features),
@@ -50,7 +69,7 @@ def create_preprocessing_pipeline(numerical_features, categorical_features):
     return preprocessor
 
 # Step 4: Function to preprocess data in training mode (fitting the pipeline)
-def preprocess_training_data(X_train, preprocessor=None):
+def preprocess_training_data(X_train, preprocessor=preprocessor):
     """Fits and transforms the training data using the provided pipeline."""
     if preprocessor is None:
         # Identify feature types
@@ -61,9 +80,9 @@ def preprocess_training_data(X_train, preprocessor=None):
     X_train_processed = preprocessor.fit_transform(X_train)
     return X_train_processed, preprocessor
 
-# Step 5: Function to preprocess new data in production mode (only transforming)
+# Step 5: Function to preprocess new/unseen/test data in production mode (only transforming)
 def preprocess_new_data(X_new, preprocessor):
-    """Transforms new/unseen data using a pre-fitted pipeline."""
+    """Transforms new/unseen/test data using a pre-fitted pipeline."""
     if preprocessor is None:
         raise ValueError("The preprocessor must be fitted on training data first before transforming new data.")
 
