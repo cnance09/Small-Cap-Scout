@@ -101,26 +101,23 @@ def preprocess_new_data(X_new, preprocessor):
 
 # Step 6: Function to predict based on different target inputs defined at the create_target_variable stage: quarterly (frequency=1), yearly (frequency=4), and 2-year (frequency=8) predictions
 def train_logistic_regression(X_train, y_train, X_test, y_test):
-    """ Trains and evaluates a logistic regression model, and returns multiple evaluation metrics
+    """
+    Trains and evaluates a logistic regression model, and returns multiple evaluation metrics
     (accuracy, precision, recall, F1-score) using cross-validation and test data.
     """
     # Train logistic regression model with a progress bar
-    logistic_model = LogisticRegression(solver='saga', max_iter=5000)
+    logistic_model = LogisticRegression(solver='saga', max_iter=5000, verbose=1)
 
-    # Display progress during model fitting
-    with tqdm(total=100, desc="Training Logistic Regression", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
-        logistic_model.fit(X_train, y_train)
-        pbar.update(100)  # Update the progress bar after training completes
+    # Fit the model (this will show iteration progress)
+    logistic_model.fit(X_train, y_train)
 
     # Check number of iterations
     print(f"Number of iterations: {logistic_model.n_iter_}")
 
-    # Evaluate using cross-validation for accuracy, precision, recall, and F1-score with progress
+    # Evaluate using cross-validation for accuracy, precision, recall, and F1-score
     cv_metrics = {}
     for metric in ['accuracy', 'precision', 'recall', 'f1']:
-        with tqdm(total=5, desc=f"Cross-Validation ({metric})", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
-            cv_metrics[metric] = cross_val_score(logistic_model, X_train, y_train, cv=5, scoring=metric)
-            pbar.update(5)
+        cv_metrics[metric] = cross_val_score(logistic_model, X_train, y_train, cv=5, scoring=metric)
 
     # Print cross-validation scores
     print(f"Cross-validated Metrics: {', '.join([f'{m}: {cv_metrics[m].mean():.4f}' for m in cv_metrics])}")
@@ -143,11 +140,11 @@ def train_logistic_regression(X_train, y_train, X_test, y_test):
 
 
 '''# HOW TO USE in terminal:
-
-cd ~/Small-Cap-Scout/smallscout
 ipython
 import pandas as pd
 from preprocessor import create_target_variable, group_train_test_split, identify_feature_types, create_preprocessing_pipeline,preprocess_training_data, preprocess_new_data,train_logistic_regression
+
+cd ~/Small-Cap-Scout/smallscout
 
 # Step 1: Target creation and splitting
 df = pd.read_csv('~/Small-Cap-Scout/raw_data/merged_data_prelim_stocks.csv')
