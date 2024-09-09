@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 from smallscout.params import *
+from google.cloud import bigquery
 
 def quarters(month):
     if month <= 3:
@@ -20,13 +21,12 @@ def load_financials():
     cash_flow_statement = pd.read_csv(CF_PATH, index_col=0)
 
     sub = pd.read_csv(SUB_PATH, index_col=0)
-    sub = sub[['adsh', 'sic', 'stprba',
-              'afs', 'nciks']]
+    sub = sub[['adsh', 'sic', 'afs']]
 
     #Clean up financial statements
-    balance_sheet.drop(['index', 'coreg', 'report', 'form', 'fye', 'qtrs'], axis=1, inplace=True)
-    income_statement.drop(['index', 'coreg', 'report', 'form', 'fye', 'qtrs'], axis=1, inplace=True)
-    cash_flow_statement.drop(['index', 'coreg', 'report', 'form', 'fye', 'qtrs'], axis=1, inplace=True)
+    balance_sheet.drop(['coreg', 'report', 'form', 'fye', 'qtrs'], axis=1, inplace=True)
+    income_statement.drop(['coreg', 'report', 'form', 'fye', 'qtrs'], axis=1, inplace=True)
+    cash_flow_statement.drop(['coreg', 'report', 'form', 'fye', 'qtrs'], axis=1, inplace=True)
 
     balance_sheet.drop_duplicates(inplace=True)
     income_statement.drop_duplicates(inplace=True)
@@ -53,16 +53,15 @@ def load_financials():
                                    suffixes=('_bs', '_is'))
     df_financials = df_financials.merge(cash_flow_statement, how='inner', on=['adsh', 'cik', 'name', 'fy', 'fp', 'date', 'filed', 'ddate'],
                                     suffixes=('', '_cf'))
-    df_financials = df_financials.merge(sub, how='left', on='adsh') #230,863 observations
+    df_financials = df_financials.merge(sub, how='left', on='adsh') #273,309 observations
 
-    df_financials['sic_2d'] = df_financials.sic.apply(lambda x: str(x)[:2]) #69 unique industry IDs
+    df_financials['sic_2d'] = df_financials.sic.apply(lambda x: str(x)[:2]) #70 unique industry IDs
     df_financials['quarter'] = df_financials.apply(lambda x: str(x.date.year)+'-'+quarters(x.date.month), axis=1)
     df_financials['year'] = df_financials.date.dt.year
-    df_financials['n_year'] = df_financials.groupby(['cik', 'year'])['year'].transform('count')
 
     # Keep only full year observations
     df_financials = df_financials[df_financials.n_year==4]
-    drop_cols = ['adsh', 'name', 'fy', 'fp', 'filed', 'ddate', 'n_cik_bs', 'n_cik_is', 'n_cik', 'sic', 'n_year']
+    drop_cols = ['adsh', 'name', 'fy', 'fp', 'filed', 'ddate', 'sic']
     df_financials.drop(columns=drop_cols, inplace=True)
 
     df_financials = df_financials.sort_values(['cik', 'date']).drop_duplicates().reset_index(drop=True)
@@ -138,18 +137,34 @@ def load_stock_data():
     stocks_qtr.drop('date', axis=1, inplace=True)
     return stocks_qtr
 
-def merge_sets():
+def merge_sets(stocks=False):
     df_financials = load_financials()
     fred = load_economic_variables()
     mkt_cap = load_market_cap()
-    stocks = load_stock_data()
+    if stocks == True:
+        stocks = load_stock_data()
+        level2 = mkt_cap.merge(stocks, left_on=['TICKER', 'quarter'], right_on=['Ticker', 'quarter'], how='inner')
+        level2.drop(columns=['date'], inplace=True)
 
     level1 = df_financials.merge(fred, how='left', on='date')
     level1.reset_index(drop=True, inplace=True)
 
-    level2 = mkt_cap.merge(stocks, left_on=['TICKER', 'quarter'], right_on=['Ticker', 'quarter'], how='inner')
-    level2.drop(columns=['date'], inplace=True)
+    if stocks == True:
+        merged_df = level1.merge(level2, left_on=['cik', 'quarter'], right_on=['CIK', 'quarter'], how='inner')
+    else:
+        merged_df = level1.merge(mkt_cap, left_on=['cik', 'quarter'], right_on=['CIK', 'quarter'], how='inner')
 
-    merged_df = level1.merge(level2, left_on=['cik', 'quarter'], right_on=['CIK', 'quarter'], how='inner')
+    merged_df['n_year'] = merged_df.groupby(['cik', 'year'])['year'].transform('count')
+    merged_df = merged_df[merged_df.n_year==4]
+    merged_df.drop('n_year', axis=1, inplace=True)
+
+    merged_df['n_cik'] = merged_df.groupby(['cik'])['cik'].transform('count')
+    merged_df = merged_df[merged_df.n_cik>=12]
+    merged_df.drop('n_cik', axis=1, inplace=True)
+
+    merged_df = merged_df.drop_duplicates().reset_index(drop=True)
 
     return merged_df
+
+def upload_bigquery(df):
+    print(df)
