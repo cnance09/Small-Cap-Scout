@@ -1,18 +1,38 @@
-import os
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from smallscout.params import *
 
-from smallcap.registry import load_model
-from smallcap.preprocessor import preprocess_features
+from smallscout.preprocessor import preprocess_new_data
+from fastapi.middleware.cors import CORSMiddleware
+import pickle
 
 # Initialize FastAPI app
 app = FastAPI()
 
-# Load dataset path from environment variables
-QUERY_DATASET = os.environ.get("QUERY_DATASET", "path/data_for_preprocessing.csv")
 
-# Preload the model to avoid reloading it with every request
-app.state.model = load_model()
+# Add middleware for CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
+# Load the models
+
+# Load the pre-trained logistic regression model
+with open(MODEL_PATH, 'rb') as f_qrt:
+    app.state.model = pickle.load(f_qrt)
+
+
+# Load the dataset when the app starts
+# Load dataset containing information about all tickers
+try:
+    app.state.dataset = pd.read_csv(QUERY_DATASET)
+except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Error loading dataset: {str(e)}")
+
 
 @app.get("/predict")
 def predict(ticker: str):
@@ -26,20 +46,15 @@ def predict(ticker: str):
     Returns:
         - dict: A JSON object with the prediction result (e.g., worthiness score).
     """
-    # Load dataset containing information about all tickers
-    try:
-        dataset = pd.read_csv(QUERY_DATASET)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading dataset: {str(e)}")
 
     # Filter the dataset to get the row for the input ticker
-    ticker_data = dataset[dataset['ticker'] == ticker]
+    ticker_data =  app.state.dataset[app.state.dataset['ticker'] == ticker]
 
     if ticker_data.empty:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
 
     # Preprocess the data for model input
-    X_processed = preprocess_features(ticker_data)
+    X_processed = preprocess_new_data(ticker_data)
 
     # Retrieve the preloaded model
     model = app.state.model
