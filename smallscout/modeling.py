@@ -5,6 +5,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
