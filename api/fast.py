@@ -2,6 +2,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from smallscout.params import *
 
+#from smallscout.preprocessor import *
 from smallscout.preprocessor import preprocess_new_data
 from fastapi.middleware.cors import CORSMiddleware
 import pickle
@@ -25,11 +26,14 @@ app.add_middleware(
 with open(MODEL_PATH, 'rb') as f_qrt:
     app.state.model = pickle.load(f_qrt)
 
+# Load the preprocessor pipeline
+with open(PREPROCESSOR_PATH, 'rb') as f_preprocessor:
+    app.state.preprocessor = pickle.load(f_preprocessor)
 
 # Load the dataset when the app starts
 # Load dataset containing information about all tickers
 try:
-    app.state.dataset = pd.read_csv(QUERY_DATASET)
+    app.state.dataset = pd.read_csv(QUERY_PATH, index_col=0)
 except Exception as e:
     raise HTTPException(status_code=500, detail=f"Error loading dataset: {str(e)}")
 
@@ -48,14 +52,18 @@ def predict(ticker: str):
     """
 
     # Filter the dataset to get the row for the input ticker
-    ticker_data =  app.state.dataset[app.state.dataset['ticker'] == ticker]
+    ticker_data =  app.state.dataset[app.state.dataset['TICKER'] == ticker]
 
     if ticker_data.empty:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
 
     # Preprocess the data for model input
-    X_processed = preprocess_new_data(ticker_data)
 
+    # Preprocess the data using the loaded preprocessor
+    preprocessor = app.state.preprocessor
+    X_processed = preprocess_new_data(ticker_data, preprocessor)
+
+    print(pd.DataFrame(X_processed).head())
     # Retrieve the preloaded model
     model = app.state.model
     if model is None:
@@ -73,3 +81,9 @@ def predict(ticker: str):
 @app.get("/")
 def root():
     return {"message": "Welcome to the stock worthiness prediction API!"}
+
+print(app.state.dataset.head())
+
+print(app.state.model == None)
+
+print(predict("AAPL"))
