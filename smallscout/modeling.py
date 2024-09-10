@@ -79,7 +79,7 @@ def train_logistic_regression_and_save(X_train, y_train, X_test, y_test, model_d
     """Trains, evaluates a logistic regression model, saves the trained model, and returns evaluation metrics."""
 
     model_type = 'logistic_regression'
-    model = LogisticRegression(solver='saga', max_iter=4000)
+    model = LogisticRegression(C=0.001, max_iter=2000, solver='lbfgs')
 
     # Train model with a progress bar
     with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
