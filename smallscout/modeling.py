@@ -33,10 +33,10 @@ if __name__ == '__main__':
 
     model = get_model(args.model_type)
 
-def save_model(model, model_type, model_dir='~/models/'):
-    """Saves the trained model with a timestamp."""
+def save_model(model, model_type, target_horizon, model_dir='~/models/'):
+    """Saves the trained model with a timestamp and prediction target."""
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    model_filename = f'{model_type}_{timestamp}.pkl'
+    model_filename = f'{model_type}_{target_horizon}_{timestamp}.pkl'
 
     # Ensure model directory exists
     if not os.path.exists(model_dir):
