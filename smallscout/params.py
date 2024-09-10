@@ -20,6 +20,10 @@ GAR_REPO = os.environ.get("GAR_REPO")
 DOCKER_IMAGE_NAME = os.environ.get("DOCKER_IMAGE_NAME")
 SERVICE_URL = os.environ.get("SERVICE_URL")
 
+# BigQuery
+BQ_REGION = os.environ.get("BQ_REGION")
+BQ_DATASET = os.environ.get("BQ_DATASET")
+
 # Temporary Paths
 BS_PATH = os.environ.get("BS_PATH")
 IS_PATH = os.environ.get("IS_PATH")
@@ -28,5 +32,5 @@ SUB_PATH = os.environ.get("SUB_PATH")
 FRED_PATH = os.environ.get("FRED_PATH")
 MC_PATH = os.environ.get("MC_PATH")
 STOCK_PATH = os.environ.get("STOCK_PATH")
-QUERY_PATH= os.envron.get("QUERY_PATH")
+QUERY_PATH= os.environ.get("QUERY_PATH")
 MODEL_PATH = os.environ.get("MODEL_PATH")
