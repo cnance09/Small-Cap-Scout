@@ -166,5 +166,54 @@ def merge_sets(stocks=False):
 
     return merged_df
 
-def upload_bigquery(df):
-    print(df)
+def load_data_to_bq(
+        data: pd.DataFrame,
+        gcp_project:str,
+        bq_dataset:str,
+        table: str,
+        truncate: bool
+    ) -> None:
+    """
+    - Save the DataFrame to BigQuery
+    - Empty the table beforehand if `truncate` is True, append otherwise
+    """
+
+    assert isinstance(data, pd.DataFrame)
+    full_table_name = f"{gcp_project}.{bq_dataset}.{table}"
+    #data.columns = ['pickup_datetime'] + [f"_{i}" for i in range(1,len(data.columns)-1)] + ['fare_amount']
+
+    # Load data onto full_table_name
+    client = bigquery.Client(gcp_project)
+    write_mode = "WRITE_TRUNCATE" if truncate else "WRITE_APPEND"
+    job_config = bigquery.LoadJobConfig(write_disposition=write_mode)
+
+    job = client.load_table_from_dataframe(data, full_table_name, job_config=job_config)
+    result = job.result()
+
+    # 🎯 HINT for "*** TypeError: expected bytes, int found":
+    # After preprocessing the data, your original column names are gone (print it to check),
+    # so ensure that your column names are *strings* that start with either
+    # a *letter* or an *underscore*, as BQ does not accept anything else
+
+
+    print(f"✅ Data saved to bigquery, with shape {data.shape}")
+
+#load_data_to_bq(data=merge_sets(), gcp_project=GCP_PROJECT, bq_dataset=BQ_DATASET, table=BQ_REGION, truncate=False)
+
+
+from google.cloud import bigquery
+
+PROJECT = "my-project"
+DATASET = "taxifare_dataset"
+TABLE = "processed_1k"
+
+query = f"""
+    SELECT *
+    FROM {PROJECT}.{DATASET}.{TABLE}
+    WHERE TICKER = TICKER
+    """
+
+client = bigquery.Client(project=gcp_project)
+query_job = client.query(query)
+result = query_job.result()
+df = result.to_dataframe()
