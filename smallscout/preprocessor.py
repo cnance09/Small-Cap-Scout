@@ -4,6 +4,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import RobustScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
+from smallscout.params import PREPROCESSOR_PATH
+from datetime import datetime
+import os
+import pickle
+
+# Path to save the preprocessor
+#PREPROCESSOR_FILE_PATH = "../Models/logistic_regression_preprocessor.pkl"
 
 # Step 1 : target creation + train_test_split
 # Creating target variables to automate creation of quarterly, yearly and 2-yearly targets, because well, DON'T REPEAT YOURSELF!
@@ -89,6 +96,29 @@ def create_preprocessing_pipeline(numerical_features, categorical_features):
     )
     return preprocessor
 
+# Function to save the preprocessor
+# #def save_preprocessor(preprocessor, file_path=PREPROCESSOR_PATH):
+#     with open(file_path, 'wb') as file:
+#         pickle.dump(preprocessor, file)
+#     print(f"Preprocessor saved to {file_path}")
+
+def save_preprocessor(preprocessor, target_horizon, preprocessor_dir=PREPROCESSOR_PATH):
+    """Saves the preprocessor with a timestamp and prediction target."""
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    preprocessor_filename = f'preprocessor_{target_horizon}_{timestamp}.pkl'
+    # Ensure preprocessor directory exists
+    if not os.path.exists(preprocessor_dir):
+        os.makedirs(preprocessor_dir)
+    # Save the preprocessor
+    preprocessor_path = os.path.join(preprocessor_dir, preprocessor_filename)
+    with open(preprocessor_path, 'wb') as f_preprocessor:
+        pickle.dump(preprocessor, f_preprocessor)
+    print(f"Preprocessor saved to: {preprocessor_path}")
+    return preprocessor_path
+
+# Load Pipeline from pickle file
+#my_pipeline = pickle.load(open("pipeline.pkl","rb"))
+
 # Step 4: Function to preprocess data in training mode (fitting the pipeline)
 def preprocess_training_data(X_train, preprocessor=None):
     """Fits and transforms the training data using the provided pipeline."""
@@ -99,6 +129,9 @@ def preprocess_training_data(X_train, preprocessor=None):
 
     # Fit and transform the training data
     X_train_processed = preprocessor.fit_transform(X_train)
+
+    # Save the preprocessor after fitting
+    save_preprocessor(preprocessor)
 
     return X_train_processed, preprocessor
 
