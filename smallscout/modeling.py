@@ -135,3 +135,42 @@ def run_grid_search(X_train, y_train):
     best_model = grid_search.best_estimator_
 
     return best_model, best_params, best_score
+
+def train_knn_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
+    """Trains, evaluates a K-Nearest Neighbors model, saves the trained model, and returns evaluation metrics."""
+
+    model_type = 'knn'
+    knn = KNeighborsClassifier()
+
+    # Train model with a progress bar
+    with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
+        knn.fit(X_train, y_train)
+        pbar.update(100)
+
+    # Evaluate the model
+    metrics = evaluate_model(knn, X_train, y_train, X_test, y_test)
+
+    # Save the model
+    save_model(knn, model_type, model_dir)
+
+    return metrics, knn
+
+
+def train_svc_rbf_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
+    """Trains, evaluates an SVM with RBF kernel, saves the trained model, and returns evaluation metrics."""
+
+    model_type = 'svc_rbf'
+    svc_rbf = SVC(kernel='rbf', probability=True)  # Set `probability=True` for log_loss and cross-validation
+
+    # Train model with a progress bar
+    with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
+        svc_rbf.fit(X_train, y_train)
+        pbar.update(100)
+
+    # Evaluate the model
+    metrics = evaluate_model(svc_rbf, X_train, y_train, X_test, y_test)
+
+    # Save the model
+    save_model(svc_rbf, model_type, model_dir)
+
+    return metrics, svc_rbf
