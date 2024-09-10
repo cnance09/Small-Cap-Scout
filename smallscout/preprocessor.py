@@ -92,29 +92,17 @@ def create_preprocessing_pipeline(numerical_features, categorical_features):
         transformers=[
             ('num', numerical_transformer, numerical_features),
             ('cat', categorical_transformer, categorical_features)
-        ]
+        ],
+        #remainder='passthrough'  # Columns not specified in 'num' or 'cat' will be passed through unmodified
     )
     return preprocessor
 
 # Function to save the preprocessor
-# #def save_preprocessor(preprocessor, file_path=PREPROCESSOR_PATH):
-#     with open(file_path, 'wb') as file:
-#         pickle.dump(preprocessor, file)
-#     print(f"Preprocessor saved to {file_path}")
+def save_preprocessor(preprocessor, file_path=PREPROCESSOR_PATH):
+    with open(file_path, 'wb') as file:
+        pickle.dump(preprocessor, file)
+    print(f"Preprocessor saved to {file_path}")
 
-def save_preprocessor(preprocessor, target_horizon, preprocessor_dir=PREPROCESSOR_PATH):
-    """Saves the preprocessor with a timestamp and prediction target."""
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    preprocessor_filename = f'preprocessor_{target_horizon}_{timestamp}.pkl'
-    # Ensure preprocessor directory exists
-    if not os.path.exists(preprocessor_dir):
-        os.makedirs(preprocessor_dir)
-    # Save the preprocessor
-    preprocessor_path = os.path.join(preprocessor_dir, preprocessor_filename)
-    with open(preprocessor_path, 'wb') as f_preprocessor:
-        pickle.dump(preprocessor, f_preprocessor)
-    print(f"Preprocessor saved to: {preprocessor_path}")
-    return preprocessor_path
 
 # Load Pipeline from pickle file
 #my_pipeline = pickle.load(open("pipeline.pkl","rb"))

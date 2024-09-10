@@ -97,6 +97,25 @@ def train_logistic_regression_and_save(X_train, y_train, X_test, y_test, model_d
 
     return metrics, model
 
+def train_knn_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
+    """Trains, evaluates a K-Nearest Neighbors model, saves the trained model, and returns evaluation metrics."""
+
+    model_type = 'knn'
+    knn = KNeighborsClassifier()
+
+    # Train model with a progress bar
+    with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
+        knn.fit(X_train, y_train)
+        pbar.update(100)
+
+    # Evaluate the model
+    metrics = evaluate_model(knn, X_train, y_train, X_test, y_test)
+
+    # Save the model
+    save_model(knn, model_type, model_dir)
+
+    return metrics, knn
+
 
 def run_grid_search(X_train, y_train):
     """Runs a grid search on logistic regression model to find the best hyperparameters."""
