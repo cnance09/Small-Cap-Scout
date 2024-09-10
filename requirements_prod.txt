@@ -16,3 +16,4 @@ plotly
 fastapi
 uvicorn
 tqdm
+google
