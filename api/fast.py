@@ -53,7 +53,7 @@ def predict(ticker: str):
 
     # Filter the dataset to get the row for the input ticker
     ticker_data =  app.state.dataset[app.state.dataset['TICKER'] == ticker]
-
+    ticker_data['target'] = 0
     if ticker_data.empty:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
 
