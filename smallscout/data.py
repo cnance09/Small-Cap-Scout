@@ -199,21 +199,3 @@ def load_data_to_bq(
     print(f"✅ Data saved to bigquery, with shape {data.shape}")
 
 #load_data_to_bq(data=merge_sets(), gcp_project=GCP_PROJECT, bq_dataset=BQ_DATASET, table=BQ_REGION, truncate=False)
-
-
-from google.cloud import bigquery
-
-PROJECT = "my-project"
-DATASET = "taxifare_dataset"
-TABLE = "processed_1k"
-
-query = f"""
-    SELECT *
-    FROM {PROJECT}.{DATASET}.{TABLE}
-    WHERE TICKER = TICKER
-    """
-
-client = bigquery.Client(project=gcp_project)
-query_job = client.query(query)
-result = query_job.result()
-df = result.to_dataframe()

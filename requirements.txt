@@ -22,3 +22,4 @@ bs4
 fastapi
 uvicorn
 tqdm
+google
