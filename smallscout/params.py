@@ -35,6 +35,7 @@ STOCK_PATH = os.environ.get("STOCK_PATH")
 QUERY_PATH= os.environ.get("QUERY_PATH")
 
 DTYPES_RAW= {
+    'name': 'object',
     'TICKER': 'object',
     'date': 'object',
     'quarter': 'object',
@@ -82,6 +83,8 @@ DTYPES_RAW= {
     'interest_rate': 'float64',
     'unemployment_rate': 'float64',
     'median_cpi': 'float64',
+    'market_cap': 'float64',
     'small_cap': 'Int64',
-    'micro_cap': 'Int64'
+    'micro_cap': 'Int64',
+    'qtr': 'object'
 }
