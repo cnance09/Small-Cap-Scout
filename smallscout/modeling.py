@@ -1,18 +1,29 @@
-import os
+import argparse
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from tqdm import tqdm
 import pickle
+import os
+
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import RobustScaler, OneHotEncoder, MinMaxScaler
+from sklearn.compose import ColumnTransformer
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, log_loss
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score, cross_validate
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report
+
+from xgboost import XGBClassifier
 
 from datetime import datetime
-from tqdm import tqdm
-
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.model_selection import GridSearchCV
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_val_score
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.neural_network import MLPClassifier
-
-import argparse
 
 def get_model(model_type):
     if model_type == 'logistic_regression':
@@ -33,10 +44,10 @@ if __name__ == '__main__':
 
     model = get_model(args.model_type)
 
-def save_model(model, model_type, target_horizon, model_dir='~/models/'):
-    """Saves the trained model with a timestamp and prediction target."""
+def save_model(model, model_type, model_dir='~/models/'):
+    """Saves the trained model with a timestamp."""
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    model_filename = f'{model_type}_{target_horizon}_{timestamp}.pkl'
+    model_filename = f'{model_type}_{timestamp}.pkl'
 
     # Ensure model directory exists
     if not os.path.exists(model_dir):
@@ -97,6 +108,64 @@ def train_logistic_regression_and_save(X_train, y_train, X_test, y_test, model_d
 
     return metrics, model
 
+def train_knn_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
+    """Trains, evaluates a K-Nearest Neighbors model, saves the trained model, and returns evaluation metrics."""
+
+    model_type = 'knn'
+    knn = KNeighborsClassifier()
+
+    # Train model with a progress bar
+    with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
+        knn.fit(X_train, y_train)
+        pbar.update(100)
+
+    # Evaluate the model
+    metrics = evaluate_model(knn, X_train, y_train, X_test, y_test)
+
+    # Save the model
+    save_model(knn, model_type, model_dir)
+
+    return metrics, knn
+
+def train_svc_rbf_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
+    """Trains, evaluates an SVM with RBF kernel, saves the trained model, and returns evaluation metrics."""
+
+    model_type = 'svc_rbf'
+    svc_rbf = SVC(kernel='rbf', probability=True)  # Set `probability=True` for log_loss and cross-validation
+
+    # Train model with a progress bar
+    #with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
+    svc_rbf.fit(X_train, y_train)
+        #pbar.update(100)
+
+    # Evaluate the model
+    metrics = evaluate_model(svc_rbf, X_train, y_train, X_test, y_test)
+
+    # Save the model
+    save_model(svc_rbf, model_type, model_dir)
+
+    return metrics, svc_rbf
+
+
+def train_xgb_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
+    """Trains, evaluates an XGBClassifier model, saves the trained model, and returns evaluation metrics."""
+
+    model_type = 'xgb_classifier'
+
+    # Initialize XGBClassifier with specified parameters and verbose for progress monitoring
+    xgb = XGBClassifier(n_estimators=200, learning_rate=0.01, max_depth=5, verbose=1)
+
+    # Train the model
+    xgb.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=True)
+
+    # Evaluate the model
+    metrics = evaluate_model(xgb, X_train, y_train, X_test, y_test)
+
+    # Save the model
+    save_model(xgb, model_type, model_dir)
+
+    return metrics, xgb
+
 
 def run_grid_search(X_train, y_train):
     """Runs a grid search on logistic regression model to find the best hyperparameters."""
@@ -104,8 +173,8 @@ def run_grid_search(X_train, y_train):
     # Define the parameter grid for Logistic Regression
     param_grid = {
         'solver': ['saga', 'lbfgs'],  # Different solvers
-        'max_iter': [1500, 3000, 4500],  # Number of iterations
-        'C': [0.001, 0.01, 0.1, 1, 10]  # Regularization strength
+        'max_iter': [1500, 2000, 2500],  # Number of iterations
+        'C': [0.005, 0.007, 0.01, 0.12, 0.15]  # Regularization strength
     }
 
     # Create a Logistic Regression model
@@ -136,41 +205,79 @@ def run_grid_search(X_train, y_train):
 
     return best_model, best_params, best_score
 
-def train_knn_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
-    """Trains, evaluates a K-Nearest Neighbors model, saves the trained model, and returns evaluation metrics."""
+def knn_run_grid_search(X_train, y_train):
+    """Runs a grid search on knn model to find the best hyperparameters."""
 
-    model_type = 'knn'
-    knn = KNeighborsClassifier()
+    # Define the parameter grid for Logistic Regression
+    param_grid = {
+        'n_neighbors': [550],  # Different solvers
+        #'max_iter': [1500, 2000, 2500],  # Number of iterations
+        #'C': [0.005, 0.007, 0.01, 0.12, 0.15]  # Regularization strength
+    }
 
-    # Train model with a progress bar
-    with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
-        knn.fit(X_train, y_train)
-        pbar.update(100)
+    # Create a Logistic Regression model
+    knn_model = KNeighborsClassifier()
 
-    # Evaluate the model
-    metrics = evaluate_model(knn, X_train, y_train, X_test, y_test)
+    # Set up the GridSearchCV
+    grid_search = GridSearchCV(
+        estimator=knn_model,
+        param_grid=param_grid,
+        scoring='precision',  # Choose appropriate scoring metric
+        cv=3,  # Number of cross-validation folds
+        n_jobs=-1,  # Use all available cores
+        verbose=1  # Verbosity level
+    )
 
-    # Save the model
-    save_model(knn, model_type, model_dir)
+    # Fit Grid Search
+    grid_search.fit(X_train, y_train)
 
-    return metrics, knn
+    # Best parameters and best score
+    best_params = grid_search.best_params_
+    best_score = grid_search.best_score_
+
+    print(f"Best parameters: {best_params}")
+    print(f"Best cross-validation score: {best_score:.4f}")
+
+    # Get the best model
+    best_model = grid_search.best_estimator_
+
+    return best_model, best_params, best_score
 
 
-def train_svc_rbf_and_save(X_train, y_train, X_test, y_test, model_dir='~/models/'):
-    """Trains, evaluates an SVM with RBF kernel, saves the trained model, and returns evaluation metrics."""
+def run_xgboost(X_train, y_train):
+    """Runs a grid search on knn model to find the best hyperparameters."""
 
-    model_type = 'svc_rbf'
-    svc_rbf = SVC(kernel='rbf', probability=True)  # Set `probability=True` for log_loss and cross-validation
+    # Define the parameter grid for Logistic Regression
+    param_grid = param_grid = {'n_estimators': [200],
+                               'learning_rate': [0.01],
+                               'max_depth': [5]}
 
-    # Train model with a progress bar
-    with tqdm(total=100, desc=f"Training {model_type}", bar_format='{l_bar}{bar} [elapsed: {elapsed} left: {remaining}]') as pbar:
-        svc_rbf.fit(X_train, y_train)
-        pbar.update(100)
+#{'learning_rate': 0.01, 'max_depth': 5, 'n_estimators': 200}
 
-    # Evaluate the model
-    metrics = evaluate_model(svc_rbf, X_train, y_train, X_test, y_test)
+    # Create a Logistic Regression model
+    model = XGBClassifier()
 
-    # Save the model
-    save_model(svc_rbf, model_type, model_dir)
+    # Set up the search
+    grid_search = GridSearchCV(
+        estimator=model,
+        param_grid=param_grid,
+        scoring='precision',  # Choose appropriate scoring metric
+        cv=3,  # Number of cross-validation folds
+        n_jobs=-1,  # Use all available cores
+        verbose=1  # Verbosity level
+    )
 
-    return metrics, svc_rbf
+    # Fit Grid Search
+    grid_search.fit(X_train, y_train)
+
+    # Best parameters and best score
+    best_params = grid_search.best_params_
+    best_score = grid_search.best_score_
+
+    print(f"Best parameters: {best_params}")
+    print(f"Best cross-validation score: {best_score:.4f}")
+
+    # Get the best model
+    best_model = grid_search.best_estimator_
+
+    return best_model, best_params, best_score
