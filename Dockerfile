@@ -4,6 +4,7 @@ FROM python:3.10.6-buster
 COPY requirements_prod.txt /requirements.txt
 COPY api api
 COPY models models
+COPY smallscout smallscout
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt

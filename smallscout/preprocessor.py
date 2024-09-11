@@ -4,9 +4,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import RobustScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from smallscout.params import PREPROCESSOR_PATH
-#from datetime import datetime
-#import os
+#from smallscout.params import PREPROCESSOR_PATH
+from datetime import datetime
+import os
 import pickle
 
 # Path to save the preprocessor
@@ -98,7 +98,7 @@ def create_preprocessing_pipeline(numerical_features, categorical_features):
     return preprocessor
 
 # Function to save the preprocessor
-def save_preprocessor(preprocessor, file_path=PREPROCESSOR_PATH):
+def save_preprocessor(preprocessor, file_path):
     """Saves the preproc with a timestamp."""
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     preproc_filename = f'preprocessor_{timestamp}.pkl'

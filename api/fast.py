@@ -6,7 +6,6 @@ from google.cloud import bigquery
 
 #from smallscout.preprocessor import *
 from smallscout.preprocessor import preprocess_new_data
-from smallscout.utils import get_model_file
 from fastapi.middleware.cors import CORSMiddleware
 import pickle
 
@@ -47,12 +46,12 @@ def get_model_file(model_type, sequence=4, horizon='year-ahead', threshold='50%'
         raise ValueError (f"Unsupported growth threshold: {threshold}, must be 30% or 50%")
 
     if model_type in ['logistic_regression', 'knn', 'svc', 'mlpclassifier']:
-        file_name = f"Models/{model_type}_sc{small_cap}_{horizon}_{threshold}.pkl"
-        prep_file = f"Models/preprocessor_cross_section.pkl"
+        file_name = f"models/{model_type}_sc{small_cap}_{horizon}_{threshold}.pkl"
+        prep_file = f"models/preprocessor_cross_section.pkl"
         return file_name, prep_file
     if model_type == 'rnn':
-        file_name = f"Models/{model_type}_sc{small_cap}_{horizon}_{sequence}_seq_{threshold}.pkl"
-        prep_file = f"Models/prepocessor_rnn.pkl"
+        file_name = f"models/{model_type}_sc{small_cap}_{horizon}_{sequence}_seq_{threshold}.pkl"
+        prep_file = f"models/prepocessor_rnn.pkl"
         return file_name, prep_file
 
     raise ValueError(f"Unknown model type: {model_type}")
@@ -85,15 +84,14 @@ def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequenc
         WHERE TICKER = '{ticker}'
         ORDER BY DATE
         """
-    try:
-        client = bigquery.Client(project=GCP_PROJECT)
-        query_job = client.query(query)
-        result = query_job.result()
-        data = result.to_dataframe()
-    except:
-        if (len(data) == 0)|(data == None):
-            raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
-        raise ValueError('Error Loading Dataset')
+    client = bigquery.Client(project=GCP_PROJECT)
+    query_job = client.query(query)
+    result = query_job.result()
+    data = result.to_dataframe()
+    data = data.astype(DTYPES_RAW)
+
+    if len(data) == 0:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
 
     if model_type=='RNN':
         idx = data.index[data.quarter==quarter]
@@ -123,14 +121,15 @@ def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequenc
         raise HTTPException(status_code=500, detail="Model not loaded.")
 
     # Make the prediction using the logistic regression model
-    y_pred = model.predict(X_processed)
+    y_pred = int(model.predict(X_processed)[0])
 
     # Since the logistic regression prediction is likely binary (0 or 1), convert to readable format
-    worthiness = "worthy" if y_pred[0] == 1 else "not worthy"
+    worthiness = "worthy" if y_pred == 1 else "not worthy"
 
     # Return the prediction result
-    return {"ticker": ticker, "worthiness": worthiness, 'prediction': y_pred,
+    results = {"ticker": ticker, "worthiness": worthiness, 'prediction': y_pred,
             'model_type': model_type, 'quarter':quarter, 'sequence': sequence, 'horizon': horizon, 'threshold': threshold, 'small_cap': small_cap}
+    return results
 
 @app.get("/info")
 def root():
@@ -141,9 +140,9 @@ def root():
 def root():
     return {"message": "Welcome to the stock worthiness prediction API!"}
 
-#print(app.state.dataset.head())
+if __name__ == '__main__':
+    #print(app.state.dataset.head())
+    #print(app.state.model == None)
 
-#print(app.state.model == None)
-
-print(predict("AAPL", quarter='2023-Q4'))
-# returns --> {'ticker': 'AAPL', 'worthiness': 'not worthy', 'prediction': array([0])}
+    print(predict("AAPL", quarter='2023-Q4'))
+    # returns --> {'ticker': 'AAPL', 'worthiness': 'not worthy', 'prediction': array([0])}
