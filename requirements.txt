@@ -22,4 +22,10 @@ bs4
 fastapi
 uvicorn
 tqdm
-google
+google-cloud-bigquery
+google-cloud-storage==2.14.0
+google-api-core==2.8.2
+googleapis-common-protos==1.56.4
+protobuf==3.19.6
+h5py==3.10.0
+db-dtypes

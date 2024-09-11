@@ -40,6 +40,22 @@ app.add_middleware(
 # except Exception as e:
 #     raise HTTPException(status_code=500, detail=f"Error loading dataset: {str(e)}")
 
+def get_model_file(model_type, sequence=4, horizon='year-ahead', threshold='50%', small_cap=True):
+    if horizon not in ['quarter-ahead', 'year-ahead', 'two-years-ahead']:
+        raise ValueError (f"Unsupported horizon: {horizon}, must be quarter-ahead, year-ahead or two-years-ahead")
+    if threshold not in ['30%', '50%']:
+        raise ValueError (f"Unsupported growth threshold: {threshold}, must be 30% or 50%")
+
+    if model_type in ['logistic_regression', 'knn', 'svc', 'mlpclassifier']:
+        file_name = f"Models/{model_type}_sc{small_cap}_{horizon}_{threshold}.pkl"
+        prep_file = f"Models/preprocessor_cross_section.pkl"
+        return file_name, prep_file
+    if model_type == 'rnn':
+        file_name = f"Models/{model_type}_sc{small_cap}_{horizon}_{sequence}_seq_{threshold}.pkl"
+        prep_file = f"Models/prepocessor_rnn.pkl"
+        return file_name, prep_file
+
+    raise ValueError(f"Unknown model type: {model_type}")
 
 @app.get("/predict")
 def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequence=4, horizon='year-ahead', threshold='50%', small_cap=True):
@@ -78,12 +94,10 @@ def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequenc
         if (len(data) == 0)|(data == None):
             raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
         raise ValueError('Error Loading Dataset')
-    print(model_file, prep_file)
-
 
     if model_type=='RNN':
         idx = data.index[data.quarter==quarter]
-        input_data = data.iloc[(idx-3):(idx)]
+        input_data = data.iloc[(idx-(sequence-1)):(idx)]
     else:
         input_data = data[data.quarter==quarter]
     input_data.drop(columns=['TICKER', 'date', 'quarter'], inplace=True)
@@ -115,7 +129,13 @@ def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequenc
     worthiness = "worthy" if y_pred[0] == 1 else "not worthy"
 
     # Return the prediction result
-    return {"ticker": ticker, "worthiness": worthiness, 'prediction': y_pred}
+    return {"ticker": ticker, "worthiness": worthiness, 'prediction': y_pred,
+            'model_type': model_type, 'quarter':quarter, 'sequence': sequence, 'horizon': horizon, 'threshold': threshold, 'small_cap': small_cap}
+
+@app.get("/info")
+def root():
+    return {"message": "returns info about the ticker! - based on data_for_preprocessing.csv"}
+
 
 @app.get("/")
 def root():
