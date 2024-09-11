@@ -25,3 +25,12 @@ docker_interactive:
 
 docker_deploy:
 		gcloud run deploy --image ${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/${GAR_REPO}/${GAR_IMAGE}:prod --memory ${GAR_MEMORY} --region ${GCP_REGION} --env-vars-file .env.yaml
+
+run_api:
+	uvicorn api.fast:app --reload
+
+docker_build_local:
+	docker build --tag=${GAR_IMAGE}:dev .
+
+docker_run_local:
+		docker run -e PORT=8000 -p 8000:8000 --env-file .env ${GAR_IMAGE}:dev
