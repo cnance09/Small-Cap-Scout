@@ -99,8 +99,17 @@ def create_preprocessing_pipeline(numerical_features, categorical_features):
 
 # Function to save the preprocessor
 def save_preprocessor(preprocessor, file_path=PREPROCESSOR_PATH):
+    """Saves the preproc with a timestamp."""
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    preproc_filename = f'preprocessor_{timestamp}.pkl'
+    # Ensure model directory exists
+    if not os.path.exists(file_path):
+        os.makedirs(file_path)
+
+    file_path = os.path.join(file_path, preproc_filename   )
     with open(file_path, 'wb') as file:
         pickle.dump(preprocessor, file)
+
     print(f"Preprocessor saved to {file_path}")
 
 # Load Pipeline from pickle file
