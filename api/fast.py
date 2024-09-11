@@ -132,9 +132,39 @@ def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequenc
     return {"ticker": ticker, "worthiness": worthiness, 'prediction': y_pred,
             'model_type': model_type, 'quarter':quarter, 'sequence': sequence, 'horizon': horizon, 'threshold': threshold, 'small_cap': small_cap}
 
+# @app.get("/info")
+# def root():
+#     return {"message": "returns info about the ticker! - based on data_for_preprocessing.csv"}
+
 @app.get("/info")
-def root():
-    return {"message": "returns info about the ticker! - based on data_for_preprocessing.csv"}
+def get_ticker_info(ticker: str):
+    """
+    Return the latest info (Revenues, market_cap, etc.) for a given stock ticker.
+    """
+    ticker_data = app.state.dataset[app.state.dataset['ticker'] == ticker]
+
+    if ticker_data.empty:
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
+
+    # Ensure the data is sorted by date or some time-based column
+    ticker_data_sorted = ticker_data.sort_values(by='date', ascending=False)
+
+    # Get the latest record
+    latest_data = ticker_data_sorted.iloc[0]
+
+    # Extract the required values
+    revenues = latest_data.get('Revenues', 'N/A')  # Adjust column name if needed
+    market_cap = latest_data.get('market_cap', 'N/A')
+    NetCashProvidedByUsedInOperatingActivities = latest_data.get('NetCashProvidedByUsedInOperatingActivities', 'N/A')
+    ProfitLoss = latest_data.get('ProfitLoss', 'N/A')
+    GrossProfit = latest_data.get('GrossProfit', 'N/A')
+    return {
+        "Ticker": ticker,
+        "Market cap": market_cap,
+        "revenues": revenues,
+        "Profit Loss": ProfitLoss,
+        "Gross Profit": GrossProfit,
+        "Net Cash": NetCashProvidedByUsedInOperatingActivities   }
 
 
 @app.get("/")
