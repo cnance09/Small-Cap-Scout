@@ -29,20 +29,20 @@ def get_model_file(model_type, sequence=4, horizon='year-ahead', threshold='50%'
     if threshold not in ['30%', '50%']:
         raise ValueError (f"Unsupported growth threshold: {threshold}, must be 30% or 50%")
 
-    if model_type in ['logistic_regression', 'knn', 'svc', 'mlpclassifier']:
+    prep_file = f"models/preprocessor_cross_section.pkl"
+
+    if model_type == 'xgb':
         file_name = f"models/{model_type}_sc{small_cap}_{horizon}_{threshold}.pkl"
-        prep_file = f"models/preprocessor_cross_section.pkl"
-        return file_name, prep_file
     if model_type == 'rnn':
         file_name = f"models/{model_type}_sc{small_cap}_{horizon}_{sequence}_seq_{threshold}.pkl"
-        prep_file = f"models/prepocessor_rnn.pkl"
-        return file_name, prep_file
+    if model_type not in ['xgb', 'rnn']:
+        raise ValueError(f"Unknown model type: {model_type}")
 
-    raise ValueError(f"Unknown model type: {model_type}")
+    return file_name, prep_file
 
 
 @app.get("/predict")
-def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequence=4, horizon='year-ahead', threshold='50%', small_cap=True):
+def predict(ticker, model_type='xgb', quarter='2024-Q1', sequence=4, horizon='year-ahead', threshold='50%', small_cap=True):
     """
     Predict the worthiness of a stock based on its ticker symbol.
     Fetches data from the local dataset, preprocesses it, and passes it to the logistic regression model.
@@ -78,7 +78,7 @@ def predict(ticker, model_type='logistic_regression', quarter='2024-Q2', sequenc
     if len(data) == 0:
         raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
 
-    if model_type=='RNN':
+    if model_type=='rnn':
         idx = data.index[data.quarter==quarter]
         input_data = data.iloc[(idx-(sequence-1)):(idx)]
     else:
