@@ -141,7 +141,7 @@ def get_ticker_info(ticker: str):
     name = latest_data['name']
     revenues = latest_data['Revenues']  # Adjust column name if needed
     market_cap = latest_data['market_cap']
-    OperatingCF = latest_data.get('NetCashProvidedByUsedInOperatingActivities', 'N/A')
+    OperatingCF = latest_data['NetCashProvidedByUsedInOperatingActivities']
     ProfitLoss = latest_data['ProfitLoss']
     GrossProfit = latest_data['GrossProfit']
     results = {"Ticker": ticker,
