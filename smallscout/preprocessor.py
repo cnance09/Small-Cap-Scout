@@ -1,28 +1,17 @@
 # Importing all the good stuff
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from tqdm import tqdm
 import pickle
 import os
+from tqdm import tqdm
+from datetime import datetime
 
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import RobustScaler, OneHotEncoder, MinMaxScaler
+from sklearn.preprocessing import RobustScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, log_loss
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import cross_val_score, cross_validate
-from sklearn.model_selection import GridSearchCV
-from sklearn.svm import SVC
-from sklearn.metrics import classification_report
-
 from xgboost import XGBClassifier
-
-from datetime import datetime
 #from smallscout.params import PREPROCESSOR_PATH
 
 
