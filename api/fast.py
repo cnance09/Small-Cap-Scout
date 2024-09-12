@@ -3,7 +3,6 @@ from fastapi import FastAPI, HTTPException
 from smallscout.params import *
 from google.cloud import bigquery
 
-
 #from smallscout.preprocessor import *
 from smallscout.preprocessor import preprocess_new_data
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +22,7 @@ app.add_middleware(
 )
 
 
-def get_model_file(model_type, sequence=4, horizon='year-ahead', threshold='50%', small_cap=True):
+def get_model_file(model_type, horizon='year-ahead', threshold='50%', small_cap=True):
     if horizon not in ['quarter-ahead', 'year-ahead', 'two-years-ahead']:
         raise ValueError (f"Unsupported horizon: {horizon}, must be quarter-ahead, year-ahead or two-years-ahead")
     if threshold not in ['30%', '50%']:
@@ -34,7 +33,8 @@ def get_model_file(model_type, sequence=4, horizon='year-ahead', threshold='50%'
     if model_type == 'xgb':
         file_name = f"models/{model_type}_sc{small_cap}_{horizon}_{threshold}.pkl"
     if model_type == 'rnn':
-        file_name = f"models/{model_type}_sc{small_cap}_{horizon}_{sequence}_seq_{threshold}.pkl"
+        sequence = 4
+        file_name = f"models/{model_type}_sc{small_cap}_{horizon}_{sequence}_seq_{threshold}_v2.pkl"
     if model_type not in ['xgb', 'rnn']:
         raise ValueError(f"Unknown model type: {model_type}")
 
@@ -55,7 +55,7 @@ def predict(ticker, model_type='xgb', quarter='2024-Q1', sequence=4, horizon='ye
     """
 
     # Load corresponding model & preprocessor
-    model_file, prep_file = get_model_file(model_type=model_type, sequence=sequence, horizon=horizon, threshold=threshold, small_cap=True)
+    model_file, prep_file = get_model_file(model_type=model_type, horizon=horizon, threshold=threshold, small_cap=True)
     with open(model_file, 'rb') as f_qrt:
         app.state.model = pickle.load(f_qrt)
 
@@ -76,25 +76,32 @@ def predict(ticker, model_type='xgb', quarter='2024-Q1', sequence=4, horizon='ye
     data = data.astype(DTYPES_RAW)
 
     if len(data) == 0:
-        raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset.")
+        raise HTTPException(status_code=404, detail=f"Ticker {ticker} not found in dataset or selected quarter unavailable.")
 
     if model_type=='rnn':
-        idx = data.index[data.quarter==quarter]
-        input_data = data.iloc[(idx-(sequence-1)):(idx)]
+        idx = data.index[data.quarter==quarter][0]
+        print(type(idx))
+        input_data = data.iloc[(int(idx)-(int(sequence)-1)):(int(idx)+1)]
     else:
         input_data = data[data.quarter==quarter]
     input_data.drop(columns=['TICKER', 'date', 'quarter', 'name'], inplace=True)
 
     X_processed = preprocess_new_data(input_data, app.state.preprocessor)
-
+    if model_type=='rnn':
+        X_processed = np.array(X_processed).reshape((1, X_processed.shape[0], X_processed.shape[1]))
+        X_processed = X_processed.astype('float32')
     # Retrieve the preloaded model
     model = app.state.model
     if model is None:
         raise HTTPException(status_code=500, detail="Model not loaded.")
 
     # Make the prediction using the logistic regression model
-    y_pred = int(model.predict(X_processed)[0])
-    y_prob = round(float(model.predict_proba(X_processed)[0][1]),2)
+    if model_type=='xgb':
+        y_pred = int(model.predict(X_processed)[0])
+        y_prob = round(float(model.predict_proba(X_processed)[0][1]),2)
+    else:
+        y_pred = int(model.predict(X_processed)[0][0])
+        y_prob = 'n.a.'
 
     # Since the logistic regression prediction is likely binary (0 or 1), convert to readable format
     worthiness = "worthy" if y_pred == 1 else "not worthy"
@@ -167,3 +174,5 @@ if __name__ == '__main__':
     # returns --> {'ticker': 'AAPL', 'worthiness': 'not worthy', 'prediction': array([0])}
 
     print(get_ticker_info('AAPL'))
+
+    print(predict('AAPL', model_type='rnn', quarter='2024-Q1', sequence=4, horizon='year-ahead', threshold='50%', small_cap=True))
